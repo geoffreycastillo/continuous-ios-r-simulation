@@ -15,10 +15,23 @@ proportion_overlap <- function(radius, distance) {
   area_overlap(radius, distance) / area_circles(radius, distance)
 }
 
-find_candidate <- function(number_circles) {
+find_candidate <- function(number_circles, unbalanced = FALSE) {
   number_pairs_displayed <- number_circles
   proportion_overlap_increaments <- 1 / number_pairs_displayed
   overlap_targets <- seq(0, 1, by = proportion_overlap_increaments)
+  
+  if (unbalanced) {
+    indices <- seq(ceiling(number_pairs_displayed / 2))
+    indices <- indices[-length(indices)]
+    indices <- indices * 2 - 1
+   
+    for (index in indices) {
+      overlap <- (overlap_targets[[index + 1]] + overlap_targets[[index]]) / 2
+      overlap_targets <- append(overlap_targets, 
+                                overlap,
+                                after = index)
+    } 
+  }
   
   candidate <- tibble()
   for (overlap in overlap_targets) {
@@ -66,6 +79,7 @@ for (number_circles in circles) {
   candidates[[number_circles]] <- find_candidate(number_circles)
 }
 
+
 # remove unnecessary columns and save as JSON (to use in ios.js)
 json_data <- candidates
 for (i in 2:length(json_data)) {
@@ -73,6 +87,21 @@ for (i in 2:length(json_data)) {
 }
 json_data <- toJSON(json_data)
 writeLines(json_data, 'json.txt')
+
+# also for unbalanced
+candidates_unbalanced <- vector(mode = 'list', length = length(circles))
+for (number_circles in circles) {
+  candidates_unbalanced[[number_circles]] <- find_candidate(number_circles, unbalanced = TRUE)
+}
+json_data <- candidates_unbalanced
+for (i in 2:length(json_data)) {
+  json_data[[i]] <- json_data[[i]] %>% select(diameter, distance)
+}
+json_data <- toJSON(json_data)
+writeLines(json_data, 'json_unbalanced.txt')
+
+
+
 
 # for the continuous we fit a model
 # we do as if there are 100 circles and we fit a polynomial
